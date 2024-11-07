@@ -7,6 +7,7 @@ generator = pipeline("text-generation", model="EleutherAI/gpt-neo-1.3B")
 
 # Function to generate content using GPT-Neo
 def generate_content_from_gpt_neo(prompt, max_length=500):
+    # Set the parameters for generation, including max_length and num_return_sequences
     content = generator(prompt, max_length=max_length, num_return_sequences=1)[0]['generated_text']
     return content
 
