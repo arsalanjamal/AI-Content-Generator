@@ -1,14 +1,17 @@
 import streamlit as st
-from transformers import pipeline
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from fpdf import FPDF
 
 # Set up Hugging Face GPT-Neo model
-generator = pipeline("text-generation", model="EleutherAI/gpt-neo-1.3B")
+model_name = "EleutherAI/gpt-neo-1.3B"
+model = GPT2LMHeadModel.from_pretrained(model_name)
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 
 # Function to generate content using GPT-Neo
 def generate_content_from_gpt_neo(prompt, max_length=500):
-    # Set the parameters for generation, including max_length and num_return_sequences
-    content = generator(prompt, max_length=max_length, num_return_sequences=1)[0]['generated_text']
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+    outputs = model.generate(**inputs, max_length=max_length, num_return_sequences=1)
+    content = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return content
 
 # Function to create a PDF file for download
