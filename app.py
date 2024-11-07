@@ -1,4 +1,4 @@
-import streamlit as st
+import gradio as gr
 from transformers import pipeline
 from fpdf import FPDF
 
@@ -30,43 +30,61 @@ def export_to_pdf(title, content):
     pdf_output = pdf.output(dest="S").encode("latin1")
     return pdf_output
 
-# Streamlit interface to collect user input and generate content
-def main():
-    st.title("AI-Based Content Generator")
+# Function to handle the Gradio interface
+def generate_content(content_type, tone, length, prompt):
+    if prompt:
+        # Construct a custom prompt based on user input
+        if content_type == "Blog Post":
+            user_prompt = f"Write a {tone} blog post of {length} words about {prompt}. Include an engaging introduction and conclusion."
+        elif content_type == "Social Media Post":
+            user_prompt = f"Write a {tone} social media post of {length} words about {prompt}. The tone should be short, catchy, and engaging."
+        else:  # Product Description
+            user_prompt = f"Write a {tone} product description of {length} words about {prompt}. Focus on key features and benefits."
 
-    st.header("Content Type")
-    content_type = st.selectbox("Select Content Type", ["Blog Post", "Social Media Post", "Product Description"])
-    
-    tone = st.selectbox("Select Tone", ["Formal", "Casual", "Professional", "Inspirational", "Humorous"])
-    
-    # Length slider for content
-    length = st.slider("Content Length (in words)", min_value=100, max_value=1500, value=500)
-    
-    # Prompt or keywords input
-    prompt = st.text_area("Enter Keywords or Topic", "e.g., Artificial Intelligence, Future of Tech")
-    
-    # Button to generate content
-    if st.button("Generate Content"):
-        if prompt:
-            # Construct a custom prompt based on user input
-            if content_type == "Blog Post":
-                user_prompt = f"Write a {tone} blog post of {length} words about {prompt}. Include an engaging introduction and conclusion."
-            elif content_type == "Social Media Post":
-                user_prompt = f"Write a {tone} social media post of {length} words about {prompt}. The tone should be short, catchy, and engaging."
-            else:  # Product Description
-                user_prompt = f"Write a {tone} product description of {length} words about {prompt}. Focus on key features and benefits."
+        # Generate content using GPT-Neo
+        content = generate_content_from_gpt_neo(user_prompt, max_length=length)
 
-            # Generate content using GPT-Neo
-            content = generate_content_from_gpt_neo(user_prompt, max_length=length)
+        # Generate PDF for download
+        pdf_output = export_to_pdf(f"{content_type} on {prompt}", content)
 
-            st.subheader("Generated Content")
-            st.write(content)
+        return content, pdf_output
+    else:
+        return "Please provide a topic or keywords.", None
 
-            # Option to download content as PDF
-            pdf_output = export_to_pdf(f"{content_type} on {prompt}", content)
-            st.download_button("Download Content as PDF", pdf_output, file_name=f"{prompt}_generated_content.pdf")
-        else:
-            st.error("Please provide a topic or keywords.")
+# Set up Gradio interface
+def create_interface():
+    with gr.Blocks() as demo:
+        gr.Markdown("# AI-Based Content Generator")
+        
+        # Dropdown for content type selection
+        content_type = gr.Dropdown(
+            choices=["Blog Post", "Social Media Post", "Product Description"],
+            label="Content Type"
+        )
+        
+        # Dropdown for tone selection
+        tone = gr.Dropdown(
+            choices=["Formal", "Casual", "Professional", "Inspirational", "Humorous"],
+            label="Tone"
+        )
+        
+        # Slider for content length
+        length = gr.Slider(minimum=100, maximum=1500, value=500, label="Content Length (in words)")
+        
+        # Textbox for the prompt or keywords
+        prompt = gr.Textbox(lines=2, placeholder="e.g., Artificial Intelligence, Future of Tech", label="Enter Keywords or Topic")
+        
+        # Button to generate content
+        generate_button = gr.Button("Generate Content")
+        
+        # Outputs
+        generated_content = gr.Textbox(label="Generated Content", interactive=False)
+        pdf_output = gr.File(label="Download Content as PDF", interactive=False)
+        
+        # Button callback
+        generate_button.click(generate_content, inputs=[content_type, tone, length, prompt], outputs=[generated_content, pdf_output])
+
+    demo.launch()
 
 if __name__ == "__main__":
-    main()
+    create_interface()
